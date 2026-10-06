@@ -1,0 +1,57 @@
+{
+  "name": "suropark-api",
+  "version": "1.1.0",
+  "private": true,
+  "description": "SuroPark API — Municipal E-Ticketing, Dynamic Pricing & Anti-Pungli Engine (Surabaya)",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch src/main/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main/server.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "depcruise": "depcruise --validate .dependency-cruiser.cjs src",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit tests/chaos",
+    "test:integration": "vitest run tests/integration",
+    "test:e2e": "E2E=1 vitest run tests/e2e",
+    "migrate": "tsx src/infrastructure/database/migrate.ts",
+    "seed": "tsx src/infrastructure/database/seed.ts"
+  },
+  "dependencies": {
+    "@node-rs/argon2": "^2.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "jose": "^5.9.6",
+    "kysely": "^0.29.6",
+    "opossum": "^8.4.0",
+    "pg": "^8.13.1",
+    "pino": "^9.6.0",
+    "pino-http": "^10.4.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "^12.2.0",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.5",
+    "@types/opossum": "^8.1.8",
+    "@types/pg": "^8.11.10",
+    "@types/supertest": "^6.0.2",
+    "@typescript-eslint/eslint-plugin": "^8.71.1",
+    "@typescript-eslint/parser": "^8.71.1",
+    "dependency-cruiser": "^16.8.0",
+    "eslint": "^8.57.1",
+    "eslint-plugin-boundaries": "^7.2.0",
+    "supertest": "^7.0.0",
+    "testcontainers": "^12.2.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^5.0.3"
+  }
+}

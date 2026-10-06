@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SuroPark Demo — Antarmuka Pengguna</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f4f6f9;
+      color: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    header { background: #0077b6; color: white; padding: 20px; text-align: center; }
+    header h1 { font-size: 1.5rem; }
+    header p { font-size: 0.9rem; opacity: 0.9; }
+    main { flex: 1; max-width: 900px; margin: 0 auto; padding: 20px; }
+    .panel {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .panel h2 { font-size: 1.1rem; margin-bottom: 12px; color: #0077b6; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 0.85rem; margin-bottom: 4px; color: #555; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+    .btn {
+      background: #0077b6;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      margin-right: 8px;
+    }
+    .btn:hover { background: #005f8a; }
+    .btn-danger { background: #dc2626; }
+    .btn-danger:hover { background: #991b1b; }
+    .form-row { display: flex; gap: 12px; }
+    .form-row .form-group { flex: 1; }
+    .result {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      padding: 12px;
+      margin-top: 12px;
+      font-family: monospace;
+      font-size: 0.8rem;
+      white-space: pre-wrap;
+    }
+    .result.error { background: #fef2f2; border-color: #fecaca; color: #7f1d1d; }
+    .result.success { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+    .qr-code {
+      font-family: monospace;
+      font-size: 1.2rem;
+      background: #f8fafc;
+      padding: 16px;
+      border-radius: 8px;
+      word-break: break-all;
+      text-align: center;
+      margin: 12px 0;
+    }
+    .hidden { display: none; }
+    nav { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+    nav button {
+      background: transparent;
+      border: 1px solid #ddd;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    nav button.active { background: #0077b6; color: white; border-color: #0077b6; }
+    .log {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 12px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.8rem;
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 8px;
+    }
+    footer { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 12px 20px; text-align: center; font-size: 0.8rem; color: #666; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SuroPark Demo</h1>
+    <p>Antarmuka sederhana untuk menguji API parkir kota Surabaya</p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Akun Demo</h2>
+      <div class="result">
+        USER:  081100000001 / Password#123<br/>
+        JUKIR: 081100000002 / Password#123<br/>
+        ADMIN: 081230000001 / ChangeMe#2026
+      </div>
+      <p style="margin-top: 8px; font-size: 0.8rem; color: #666">API: <span id="api-url">http://localhost:3000</span></p>
+    </section>
+
+    <nav>
+      <button onclick="showSection('login')">Login</button>
+      <button onclick="showSection('checkout')">Check-out (QRIS)</button>
+      <button onclick="showSection('webhook')">Webhook Simulator</button>
+      <button onclick="showSection('zones')">Zona Parkir</button>
+      <button onclick="showSection('report')">Laporan Pelanggaran</button>
+    </nav>
+
+    <section id="login" class="panel">
+      <h2>Login</h2>
+      <form onsubmit="event.preventDefault(); login(); return false;">
+        <div class="form-group">
+          <label>Nomor Telepon</label>
+          <input type="text" id="phone" placeholder="081100000001" />
+        </div>
+        <div class="form-group">
+          <label>Kata Sandi</label>
+          <input type="password" id="password" placeholder="Password#123" />
+        </div>
+        <button type="submit" class="btn">Login</button>
+      </form>
+      <div id="login-result" class="result hidden"></div>
+    </section>
+
+    <section id="checkout" class="panel hidden">
+      <h2>Check-out & QRIS</h2>
+      <form onsubmit="event.preventDefault(); checkout(); return false;">
+        <div class="form-group">
+          <label>Ticket ID (dari check-in)</label>
+          <input type="text" id="ticket-id" placeholder="uuid dari check-in" />
+        </div>
+        <button type="submit" class="btn">Generate QRIS</button>
+      </form>
+      <div id="checkout-result" class="result hidden"></div>
+      <div id="qr-display" class="hidden">
+        <p>Scan QRIS ini untuk membayar:</p>
+        <div id="qr-code" class="qr-code"></div>
+        <p style="font-size: 0.8rem; color: #666">QR ini kedaluwarsa dalam 2 menit</p>
+      </div>
+    </section>
+
+    <section id="webhook" class="panel hidden">
+      <h2>Simulasi Webhook DOKU</h2>
+      <div class="form-group">
+        <label>Ticket ID</label>
+        <input type="text" id="webhook-ticket-id" placeholder="uuid dari check-in" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Jumlah (Rp)</label>
+          <input type="number" id="webhook-amount" value="2000" />
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="webhook-status">
+            <option value="SUCCESS">SUCCESS</option>
+            <option value="FAILED">FAILED</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn" onclick="sendWebhook('valid')">Kirim Webhook Sah</button>
+      <button class="btn btn-danger" onclick="sendWebhook('forged')">Kirim Webhook Dipalsukan</button>
+      <div id="webhook-result" class="result hidden"></div>
+    </section>
+
+    <section id="zones" class="panel hidden">
+      <h2>Zona Parkir Aktif</h2>
+      <button class="btn" onclick="loadZones()">Muat Peta Zona</button>
+      <div id="zones-result" class="result hidden"></div>
+    </section>
+
+    <section id="report" class="panel hidden">
+      <h2>Laporan Parkir Liar</h2>
+      <form onsubmit="event.preventDefault(); submitReport(); return false;">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Latitude</label>
+            <input type="number" id="report-lat" step="0.0001" value="-7.25" />
+          </div>
+          <div class="form-group">
+            <label>Longitude</label>
+            <input type="number" id="report-lng" step="0.0001" value="112.75" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Deskripsi</label>
+          <textarea id="report-desc" placeholder="Kendaraan memblockir zona..."></textarea>
+        </div>
+        <button type="submit" class="btn">Kirim Laporan</button>
+      </form>
+      <div id="report-result" class="result hidden"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Log Aktivitas</h2>
+      <pre id="log" class="log">Siap. Login untuk memulai.</pre>
+    </section>
+  </main>
+
+  <footer>
+    <p>SuroPark API Demo — © Dinas Perhubungan Kota Surabaya. Untuk keperluan demo internal.</p>
+  </footer>
+
+  <script type="module">
+    const API = document.getElementById('api-url').textContent.trim();
+    let accessToken = localStorage.getItem('accessToken') || '';
+
+    function showSection(id) {
+      ['login', 'checkout', 'webhook', 'zones', 'report'].forEach(s => {
+        document.getElementById(s).classList.toggle('hidden', s !== id);
+      });
+      document.querySelectorAll('nav button').forEach(b => {
+        b.classList.toggle('active', b.textContent.toLowerCase().includes(id));
+      });
+    }
+
+    function log(msg, type = 'info') {
+      const el = document.getElementById('log');
+      const ts = new Date().toISOString();
+      el.textContent += `[${ts}] ${type.toUpperCase()}: ${msg}\n`;
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function showResult(id, html, error = false) {
+      const el = document.getElementById(id);
+      el.className = 'result ' + (error ? 'error' : 'success');
+      el.classList.remove('hidden');
+      el.textContent = html;
+    }
+
+    async function login() {
+      const phone = document.getElementById('phone').value;
+      const password = document.getElementById('password').value;
+      try {
+        const res = await fetch(`${API}/api/v1/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-device-id': 'demo-web' },
+          body: JSON.stringify({ phone, password })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          accessToken = data.accessToken;
+          localStorage.setItem('accessToken', accessToken);
+          showResult('login-result', 'Login berhasil!\nAccess Token tersimpan.', false);
+          log('Login berhasil untuk ' + phone);
+        } else {
+          showResult('login-result', `Gagal: ${res.status} ${JSON.stringify(data)}`, true);
+          log('Login gagal: ' + res.status, 'error');
+        }
+      } catch (e) {
+        showResult('login-result', 'Koneksi gagal: ' + e.message, true);
+        log('Koneksi gagal: ' + e.message, 'error');
+      }
+    }
+
+    async function checkout() {
+      const ticketId = document.getElementById('ticket-id').value;
+      if (!accessToken) { log('Harus login dulu', 'error'); return; }
+      try {
+        const res = await fetch(`${API}/api/v1/tickets/check-out`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+            'Idempotency-Key': crypto.randomUUID(),
+            'x-device-id': 'demo-web'
+          },
+          body: JSON.stringify({ ticketId })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showResult('checkout-result', `Check-out berhasil!\nTicket: ${data.ticketId}\nTotal Fee: Rp${data.totalFee}\nExpiry: ${data.expiresAt}`, false);
+          document.getElementById('qr-code').textContent = data.qrString;
+          document.getElementById('qr-display').classList.remove('hidden');
+          log('Check-out berhasil, QRIS dibuat');
+        } else {
+          showResult('checkout-result', `Gagal: ${res.status} ${JSON.stringify(data)}`, true);
+          log('Check-out gagal: ' + res.status, 'error');
+        }
+      } catch (e) {
+        showResult('checkout-result', 'Koneksi gagal: ' + e.message, true);
+        log('Koneksi gagal: ' + e.message, 'error');
+      }
+    }
+
+    async function base64Sha256(rawBody) {
+      const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(rawBody));
+      return btoa(String.fromCharCode(...new Uint8Array(hash)));
+    }
+
+    async function hmacSha256(message, key) {
+      const enc = new TextEncoder();
+      const keyBuf = await crypto.subtle.importKey('raw', enc.encode(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+      const sig = await crypto.subtle.sign('HMAC', keyBuf, enc.encode(message));
+      return btoa(String.fromCharCode(...new Uint8Array(sig)));
+    }
+
+    async function sendWebhook(type) {
+      const ticketId = document.getElementById('webhook-ticket-id').value;
+      const amount = document.getElementById('webhook-amount').value;
+      const status = document.getElementById('webhook-status').value;
+      const secret = localStorage.getItem('webhookSecret') || 'secret-key-from-doku-back-office';
+      const clientId = localStorage.getItem('clientId') || 'MCH-0001-10791114622547';
+
+      const body = {
+        service: { id: 'QRIS' },
+        order: { invoice_number: ticketId, amount: parseFloat(amount) },
+        transaction: { status, date: new Date().toISOString() },
+        emoney_payment: { account_id: 'acc-1', approval_code: `tx-${crypto.randomUUID().slice(0, 8)}` }
+      };
+
+      const rawBody = JSON.stringify(body);
+      const requestTimestamp = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+      const requestId = `req-${crypto.randomUUID()}`;
+      const digest = await base64Sha256(rawBody);
+
+      const canonical = [
+        `Client-Id:${clientId}`,
+        `Request-Id:${requestId}`,
+        `Request-Timestamp:${requestTimestamp}`,
+        `Request-Target:/api/v1/payments/doku/webhook`,
+        `Digest:${digest}`
+      ].join('\n');
+
+      let signature;
+      if (type === 'valid') {
+        const mac = await hmacSha256(canonical, secret);
+        signature = `HMACSHA256=${mac}`;
+      } else {
+        signature = 'HMACSHA256=' + 'A'.repeat(43) + '=';
+      }
+
+      try {
+        const res = await fetch(`${API}/api/v1/payments/doku/webhook`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'client-id': clientId,
+            'request-id': requestId,
+            'request-timestamp': requestTimestamp,
+            'signature': signature
+          },
+          body: rawBody
+        });
+        const data = await res.json();
+        showResult('webhook-result', `Response ${res.status}: ${JSON.stringify(data)}`, res.status === 401);
+        log(`Webhook ${type}: ${res.status}`, res.ok ? 'info' : 'error');
+      } catch (e) {
+        showResult('webhook-result', 'Koneksi gagal: ' + e.message, true);
+        log('Webhook gagal: ' + e.message, 'error');
+      }
+    }
+
+    async function loadZones() {
+      try {
+        const res = await fetch(`${API}/api/v1/admin/zones`, {
+          headers: accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showResult('zones-result', JSON.stringify(data, null, 2), false);
+          log('Zona dimuat: ' + data.features.length + ' zona');
+        } else {
+          showResult('zones-result', `Gagal: ${res.status} ${JSON.stringify(data)}`, true);
+          log('Gagal memuat zona: ' + res.status, 'error');
+        }
+      } catch (e) {
+        showResult('zones-result', 'Koneksi gagal: ' + e.message, true);
+        log('Koneksi gagal: ' + e.message, 'error');
+      }
+    }
+
+    async function submitReport() {
+      const lat = parseFloat(document.getElementById('report-lat').value);
+      const lng = parseFloat(document.getElementById('report-lng').value);
+      const desc = document.getElementById('report-desc').value;
+      if (!accessToken) { log('Harus login dulu', 'error'); return; }
+      try {
+        const res = await fetch(`${API}/api/v1/reports/violation`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+            'Idempotency-Key': crypto.randomUUID(),
+            'x-device-id': 'demo-web'
+          },
+          body: JSON.stringify({ latitude: lat, longitude: lng, description: desc })
+        });
+        const data = await res.json();
+        showResult('report-result', `Response ${res.status}: ${JSON.stringify(data)}`, !res.ok);
+        log('Laporan: ' + res.status, res.ok ? 'info' : 'error');
+      } catch (e) {
+        showResult('report-result', 'Koneksi gagal: ' + e.message, true);
+        log('Koneksi gagal: ' + e.message, 'error');
+      }
+    }
+  </script>
+</body>
+</html>
